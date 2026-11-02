@@ -1,0 +1,40 @@
+services:
+  backend:
+    build: ./backend
+    env_file: .env
+    expose:
+      - "8000"
+    volumes:
+      - db:/data/db
+      - media:/data/media
+    environment:
+      SQLITE_PATH: /data/db/db.sqlite3
+      MEDIA_ROOT: /data/media
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - media:/media:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  db:
+  media:

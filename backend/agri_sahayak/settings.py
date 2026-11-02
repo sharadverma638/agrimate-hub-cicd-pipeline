@@ -30,12 +30,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-change-this-in-production-#$%^&*()_+'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [h for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
 
 
 # Application definition
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -99,7 +100,7 @@ WSGI_APPLICATION = 'agri_sahayak.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('SQLITE_PATH', BASE_DIR / 'db.sqlite3'),
     }
 }
 
@@ -141,8 +142,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -191,16 +192,16 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+] + [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 
 # data.gov.in API settings
 # Get your free API key from: https://api.data.gov.in/
-DATA_GOV_API_KEY = '579b464db66ec23bdd000001df823e20b8c847375a5c35ac68754751'  # Add your API key here
+DATA_GOV_API_KEY = os.environ.get('DATA_GOV_API_KEY', '')
 DATA_GOV_API_URL = 'https://api.data.gov.in/resource/9ef842fd-9a74-49c2-ad7a-ccc945674a44'
 # Mandi (market) API settings (data.gov.in resource shown in UI)
 # Get your free API key from: https://api.data.gov.in/ or set via environment
 # Use explicit mandi key if set, otherwise reuse DATA_GOV_API_KEY as a sensible default
-MANDI_API_KEY = os.environ.get('MANDI_API_KEY', '579b464db66ec23bdd000001df823e20b8c847375a5c35ac68754751')
+MANDI_API_KEY = os.environ.get('MANDI_API_KEY', DATA_GOV_API_KEY)
 # Resource for "Current Daily Price of Various Commodities from Various Markets (Mandi)"
 MANDI_API_URL = os.environ.get('MANDI_API_URL', 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070')
 # OpenAI API key for LLM fallback (set in backend/.env or environment)
