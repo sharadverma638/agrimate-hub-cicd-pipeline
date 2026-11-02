@@ -1,96 +1,147 @@
 # AgriMate Hub
 
-> An AI-powered agricultural assistance platform for Indian farmers, combining crop recommendation, plant-disease detection, market intelligence, and a produce marketplace in a single, accessible web application.
+AgriMate Hub is an AI-powered web platform for Indian farmers. It brings crop recommendation, plant disease detection, live mandi prices, government schemes and a produce marketplace into one application.
 
-## Project Overview
+## Features
 
-Indian farmers face fragmented access to agricultural knowledge and services: choosing the right crop for their soil, diagnosing crop diseases early, finding current mandi (market) prices, discovering government schemes, and reaching buyers. **AgriMate Hub** addresses this by unifying these services into one platform with a clean, multilingual-ready interface and a machine-learning backend.
+- **Crop recommendation:** suggests the most suitable crop from soil nutrients (N, P, K), temperature, humidity, pH and rainfall using a Random Forest model.
+- **Disease detection:** predicts the plant disease from an uploaded leaf image using a CNN model, with a confidence score.
+- **Mandi prices:** current market prices from the data.gov.in open API, with a bundled CSV fallback and price alerts.
+- **Government schemes:** subsidies and programs, filterable by category and state.
+- **Marketplace:** farmers list produce with photos and receive buyer inquiries.
+- **Dashboards:** separate Agriculture, Horticulture and Floriculture sections.
 
-The problem space includes:
-- **Crop selection** based on soil nutrients (N, P, K), climate, and rainfall.
-- **Early disease detection** from leaf images to prevent crop loss.
-- **Market transparency** via live mandi price data and price alerts.
-- **Scheme discovery** so farmers can access subsidies and government programs.
-- **Direct selling** through a marketplace that connects sellers and buyers.
-
-## Solution
-
-AgriMate Hub is a full-stack web application split into two cooperating components:
-
-- **Frontend** — a React single-page application (SPA) that presents the farmer-facing experience: a landing page, a category-aware dashboard (Agriculture / Horticulture / Floriculture), and feature modules for crop recommendation, disease prediction, government schemes, mandi prices, marketplace selling, and profile management.
-- **Backend** — a Django REST API that serves data and runs the ML models. It exposes endpoints for users, crops, disease predictions, schemes, mandi prices/alerts, and marketplace listings, and integrates with the `data.gov.in` Open Government Data API for real-time mandi prices.
-
-### Architecture
-
-```
-┌─────────────────────────────────┐         ┌──────────────────────────────────┐
-│         Frontend (SPA)          │         │        Backend (Django)          │
-│                                 │         │                                  │
-│  React + Vite + TypeScript      │  HTTP   │  Django 5 + Django REST Framework│
-│  Tailwind CSS + shadcn/ui       │ ──────► │  ML: scikit-learn / TensorFlow   │
-│  React Router + TanStack Query  │  JSON   │  SQLite (dev) / PostgreSQL (prod)│
-│  Recharts / framer-motion       │ ◄────── │  data.gov.in integration         │
-│  (mock data, API-ready)         │         │  CORS-enabled REST API :8000     │
-└─────────────────────────────────┘         └──────────────────────────────────┘
-```
-
-The frontend runs as a static SPA (typically on `http://localhost:5173` or `:8080`) and communicates with the backend REST API on `http://localhost:8000`. Cross-Origin Resource Sharing (CORS) is configured on the backend to trust the frontend's dev origins. The backend automatically loads the trained ML models on startup and falls back to rule-based logic when a model or external API is unavailable.
-
-**Request flow:**
-1. The browser loads the React SPA and renders the landing/dashboard UI.
-2. Feature modules call backend REST endpoints (e.g. `POST /api/crops/recommendations/`, `POST /api/diseases/predictions/`).
-3. The backend runs the relevant ML model or queries `data.gov.in`, then returns structured JSON (with confidence scores) consumed by the frontend via TanStack Query.
+If a model or external API is unavailable, the backend falls back to rule-based logic instead of failing.
 
 ## Tech Stack
 
-### Frontend
-- **React 18** with **TypeScript**
-- **Vite** (build tool / dev server) + `@vitejs/plugin-react-swc`
-- **Tailwind CSS** + **shadcn/ui** (built on **Radix UI** primitives)
-- **React Router** (client-side routing)
-- **TanStack Query** (server-state / data fetching)
-- **framer-motion** (animations), **Recharts** (charts), **lucide-react** (icons)
-- **react-hook-form** + **zod** (forms & validation)
-- **Vitest** + Testing Library (unit tests), **ESLint** (linting)
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend:** Python 3.10, Django 5, Django REST Framework, gunicorn
+- **Machine learning:** scikit-learn (crop model), TensorFlow / Keras (disease model)
+- **Database:** SQLite, stored in a Docker volume
+- **Deployment:** Docker, Docker Compose, nginx
 
-### Backend
-- **Python 3.10+** with **Django 5.0** and **Django REST Framework**
-- **django-cors-headers** (CORS)
-- **scikit-learn** (Random Forest crop recommendation) + **joblib**
-- **TensorFlow / Keras** (CNN plant-disease detection) + **h5py**
-- **Pillow** (image handling), **pandas / NumPy / SciPy** (data processing)
-- **SQLite** (development DB; PostgreSQL recommended for production)
-- Optional: **FastAPI/uvicorn** utilities, **python-decouple** (config), OpenAI fallback
+## How It Works
 
-## Setup and Installation
+The app is served from one address. nginx routes each request, and the backend is not exposed publicly.
 
-Both components are independent and must be run together for the full experience.
-
-### 1. Backend
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate            # Windows  (use: source venv/bin/activate on Linux/macOS)
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver       # http://localhost:8000
 ```
-See [backend/README.md](backend/README.md) for full details, ML model notes, and API endpoints.
-
-### 2. Frontend
-```bash
-cd frontend
-npm install                      # or: bun install
-npm run dev                     # http://localhost:5173
+Browser ──► http://localhost:8080  (nginx)
+              ├─ /          → React app
+              ├─ /api/      → Django REST API
+              ├─ /admin/    → Django admin
+              ├─ /static/   → Django static files
+              └─ /media/    → uploaded images
 ```
-See [frontend/README.md](frontend/README.md) for full details and scripts.
-
-> Tip: keep the backend running on `:8000` while developing the frontend so the feature modules can call the REST API. Configure `CORS_ALLOWED_ORIGINS` in `backend/agri_sahayak/settings.py` to match the frontend's dev URL.
 
 ## Project Structure
+
 ```
 agrimate-hub/
-├── README.md            # This file (root overview)
-├── backend/             # Django REST API + ML models
-└── frontend/            # React SPA (Vite + TypeScript)
+├── docker-compose.yml           # runs frontend and backend together
+├── .env.example                 # environment template (copy to .env)
+├── .gitignore
+├── backend/                     # Django API and ML models
+│   ├── Dockerfile
+│   ├── docker-entrypoint.sh     # applies migrations, then starts the server
+│   ├── requirements.docker.txt  # runtime dependencies
+│   ├── agri_sahayak/            # settings and URL routing
+│   ├── users/  crops/  diseases/  schemes/  mandi/  market/
+│   ├── model.pkl                # crop recommendation model
+│   └── plant_disease_model.h5   # disease detection model
+└── frontend/                    # React app
+    ├── Dockerfile
+    └── nginx.conf               # static serving and reverse proxy rules
 ```
+
+More detail: [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md).
+
+## Getting Started
+
+You need [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
+
+1. **Create the environment file** and set `DJANGO_SECRET_KEY` in it:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   To generate a key:
+
+   ```bash
+   python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+
+2. **Build and start** (the first build takes a few minutes):
+
+   ```bash
+   docker compose up --build
+   ```
+
+3. **Open the app** at http://localhost:8080. The backend needs about a minute to load the ML models.
+
+4. **Create an admin user** (one time):
+
+   ```bash
+   docker compose exec backend python manage.py createsuperuser
+   ```
+
+## Configuration
+
+Set these in `.env`, then run `docker compose up -d` to apply changes.
+
+| Variable | Description |
+|---|---|
+| `DJANGO_SECRET_KEY` | Django secret key (required) |
+| `DJANGO_DEBUG` | `0` with Docker, `1` only for debugging |
+| `ALLOWED_HOSTS` | Allowed hostnames, e.g. `localhost,127.0.0.1,yourdomain.com` |
+| `CSRF_TRUSTED_ORIGINS` | Address of the app, e.g. `http://localhost:8080` |
+| `DATA_GOV_API_KEY` | Optional key from [api.data.gov.in](https://api.data.gov.in/) for live mandi prices |
+| `MANDI_API_KEY` | Optional separate mandi key (defaults to `DATA_GOV_API_KEY`) |
+| `OPENAI_API_KEY` | Optional AI fallback |
+
+Never commit `.env` or real API keys.
+
+## Pages and URLs
+
+| Page | URL |
+|---|---|
+| Landing page | http://localhost:8080/ |
+| Dashboards | `/dashboard/agriculture`, `/dashboard/horticulture`, `/dashboard/floriculture` |
+| Admin panel | http://localhost:8080/admin/ |
+| API | http://localhost:8080/api/ |
+
+Use the admin panel to add, edit and delete data. After you log in there, the browser session also works on the API pages.
+
+## API Overview
+
+| Area | Endpoints |
+|---|---|
+| Users | `/api/users/`, `/api/users/me/`, `/api/users/profiles/` |
+| Crops | `/api/crops/list/`, `/api/crops/recommendations/` |
+| Diseases | `/api/diseases/`, `/api/diseases/predictions/` |
+| Schemes | `/api/schemes/` |
+| Mandi | `/api/mandi/prices/`, `/api/mandi/alerts/`, `/api/mandi/proxy/` |
+| Market | `/api/market/listings/`, `/api/market/inquiries/` |
+
+Most endpoints can be read without logging in. Creating or changing data needs a logged-in user. The full list is in [backend/README.md](backend/README.md).
+
+## Useful Commands
+
+| Task | Command |
+|---|---|
+| Start in the background | `docker compose up -d --build` |
+| Stop | `docker compose down` |
+| View logs | `docker compose logs -f` |
+| Back up the database | `docker compose cp backend:/data/db/db.sqlite3 ./db.sqlite3` |
+| Stop and delete the database and uploads | `docker compose down -v` |
+
+## Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| `.env` not found | Run `cp .env.example .env`. |
+| Port 8080 in use | Change `"8080:8080"` to `"8081:8080"` in `docker-compose.yml`. |
+| `/admin/` shows a "not found" page | Run `docker compose build --no-cache frontend && docker compose up -d`. |
+| Admin or API pages have no styling | Run `docker compose up -d --build backend`. |
+| `DisallowedHost` error | Add your hostname to `ALLOWED_HOSTS` in `.env`. |
